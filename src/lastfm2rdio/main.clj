@@ -1,6 +1,7 @@
-(ns lastfm2rdio.core
+(ns lastfm2rdio.main
   "We'll jam stuff into core until the proper ns organization reveals itself."
   (:require
+    [lastfm2rdio.lastfm :as lastfm]
     [oauth.client :as oa]))
 
 (def HOME (.get (System/getenv) "HOME"))
@@ -15,7 +16,7 @@
   jargon.  These are the values managed by http://rdio.mashery.com/.  Returns a
   map with two keys:
     :consumer-key
-    :consumer-secret"
+    :shared-secret"
   []
   (read-config (str HOME "/.lastfm2rdio-consumer")))
 
@@ -36,7 +37,7 @@
   (let [oauth-keys (rdio-consumer-keys)
         consumer (oa/make-consumer
                    (:consumer-key oauth-keys)
-                   (:consumer-secret oauth-keys)
+                   (:shared-secret oauth-keys)
                    "http://api.rdio.com/oauth/request_token"
                    "http://api.rdio.com/oauth/access_token"
                    "https://www.rdio.com/oauth/authorize"
@@ -51,4 +52,11 @@
         credsfile (str (.get (System/getenv) "HOME") "/.lastfm2rdio-user")]
     (spit credsfile access-token-resp)
     (println (format "Wrote access token to '%s'" credsfile))))
+
+
+; Learning more:
+; - need Echo Nest acct
+; - create taste profile for user at EN
+; - from taste profile can get rdio track IDs
+; - use rdio API to create playlist with appropriate IDs
 

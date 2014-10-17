@@ -4,5 +4,10 @@
   :license {:name "MIT"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[org.clojure/clojure "1.6.0"]
+                 [clj-http "1.0.0" :exclusions [cheshire
+                                                crouton
+                                                org.clojure/tools.reader
+                                                com.cognitect/transit-clj]]
+                 [cheshire "5.3.1"]
                  [clj-oauth "1.5.1"]])
 
