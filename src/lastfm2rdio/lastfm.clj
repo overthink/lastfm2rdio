@@ -4,8 +4,6 @@
     [clj-http.client :as http]
     [clj-http.conn-mgr :as cm]))
 
-(def ^:const ENDPOINT "http://ws.audioscrobbler.com/2.0/")
-
 (defn client
   "Return a new lastfm client that can be used to make requests to their API.
   Be sure to call shutdown when done."
@@ -20,11 +18,16 @@
   [client]
   (cm/shutdown-manager (:conn-mgr client)))
 
+(defn deep-merge
+  [& xs]
+  (if (every? map? xs)
+    (apply merge-with deep-merge xs)
+    (last xs)))
+
 (defn do-get
   [client opts]
-  (let [merged (merge-with
-                 merge
-                 {:as :json
+  (let [merged (deep-merge
+                 {:as :json-string-keys ; lastfm json keys aren't keyword friendly
                   :connection-manager (:conn-mgr client)
                   :query-params {:api_key (:api-key client)
                                  :format "json"}}
@@ -33,11 +36,20 @@
 
 (defn loved
   "Return a seq of username's loved tracks."
-  [client username]
-  (let [resp (do-get
-               client
-               {:query-params {:method "user.getlovedtracks"
-                               :user username
-                               :limit 2000}})]
-    (get-in resp [:body :lovedtracks :track])))
+  ([client username]
+   (loved client username 1 1000))
+  ([client username page limit]
+   (let [resp (do-get
+                client
+                {:query-params {:method "user.getlovedtracks"
+                                :user username
+                                :page page
+                                :limit limit}})
+         tracks (get-in resp [:body "lovedtracks" "track"])
+         info (get-in resp [:body "lovedtracks" "@attr"])
+         total-pages (Integer/valueOf ^String (get info "totalPages"))]
+     ;(prn page total-pages)
+     (if (= page total-pages)
+       tracks
+       (concat tracks (loved client username (inc page) limit))))))
 
