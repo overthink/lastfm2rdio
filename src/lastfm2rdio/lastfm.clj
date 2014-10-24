@@ -1,32 +1,32 @@
 (ns lastfm2rdio.lastfm
   "Functionality for working wiht last.fm's API."
   (:require
+    [lastfm2rdio.util :as util]
+    [com.stuartsierra.component :as component]
     [clj-http.client :as http]
     [clj-http.conn-mgr :as cm]))
+
+(defrecord LastfmClient [api-key conn-mgr]
+  component/Lifecycle
+  (start [this]
+    this)
+  (stop [this]
+    (cm/shutdown-manager conn-mgr)))
 
 (defn client
   "Return a new lastfm client that can be used to make requests to their API.
   Be sure to call shutdown when done."
   [api-key]
-  {:api-key api-key
-   :conn-mgr (cm/make-reusable-conn-manager
-               {:timeout 5  ; keep connections open for this long
-                :threads 1  ; I don't expect multiple threads using the same client
-                })})
+  (map->LastfmClient
+    {:api-key api-key
+     :conn-mgr (cm/make-reusable-conn-manager
+                 {:timeout 5  ; keep connections open for this long
+                  :threads 1  ; I don't expect multiple threads using the same client
+                  })}))
 
-(defn shutdown!
-  [client]
-  (cm/shutdown-manager (:conn-mgr client)))
-
-(defn deep-merge
-  [& xs]
-  (if (every? map? xs)
-    (apply merge-with deep-merge xs)
-    (last xs)))
-
-(defn do-get
+(defn- do-get
   [client opts]
-  (let [merged (deep-merge
+  (let [merged (util/deep-merge
                  {:as :json-string-keys ; lastfm json keys aren't keyword friendly
                   :connection-manager (:conn-mgr client)
                   :query-params {:api_key (:api-key client)
