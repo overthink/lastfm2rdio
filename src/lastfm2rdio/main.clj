@@ -1,25 +1,33 @@
 (ns lastfm2rdio.main
   "We'll jam stuff into core until the proper ns organization reveals itself."
   (:require
+    [com.stuartsierra.component :as component]
     [lastfm2rdio.lastfm :as lastfm]
-    [oauth.client :as oa]))
-
-(def HOME (.get (System/getenv) "HOME"))
+    [lastfm2rdio.rdio :as rdio]))
 
 (defn read-config
   [filename]
   (binding [*read-eval* false]
     (read-string (slurp filename))))
 
-(defn rdio-consumer-keys
-  "Returns Rdio app key and shared secret for lastfmrdio. \"Consumer\" is oauth
-  jargon.  These are the values managed by http://rdio.mashery.com/.  Returns a
-  map with two keys:
-    :consumer-key
-    :shared-secret"
+(defn config
+  "Return a config map for the app.
+  TODO: Switch to command line args at some point"
   []
-  (read-config (str HOME "/.lastfm2rdio-consumer")))
+  (read-config
+    (str (.get (System/getenv) "HOME") "/.lastfm2rdio")))
 
+(defn system
+  [config]
+  (component/system-map
+    :rdio (rdio/client
+            (get-in config [:user-creds :rdio :oauth_token])
+            (get-in config [:user-creds :rdio :oauth_token_secret]))
+    :lastfm (lastfm/client (get-in config [:app-creds :lastfm :api-key]))))
+
+(defn -main [& args]
+  :ok
+  )
 
 ; Learning more:
 ; - need Echo Nest acct

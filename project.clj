@@ -10,5 +10,7 @@
                                                 org.clojure/tools.reader
                                                 com.cognitect/transit-clj]]
                  [cheshire "5.3.1"]
-                 [clj-oauth "1.5.1"]])
+                 [clj-oauth "1.5.1"]]
+  :profiles {:dev {:source-paths ["dev"]
+                   :dependencies [[org.clojure/tools.namespace "0.2.7"]]}})
 

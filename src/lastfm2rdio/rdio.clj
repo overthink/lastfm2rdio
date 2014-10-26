@@ -1,7 +1,22 @@
 (ns lastfm2rdio.rdio
   "Code for working with Rdio's API."
   (:require
+    [com.stuartsierra.component :as component]
     [oauth.client :as oa]))
+
+(defrecord Rdio [access-token secret]
+  component/Lifecycle
+
+  (start [this]
+    this)
+
+  (stop [this]
+    this))
+
+(defn client [access-token secret]
+  (map->Rdio
+    {:access-token access-token
+     :secret secret}))
 
 (defn authorize-rdio!
   "Authorize this app with Rdio for a single user.  Asks user to go to a
