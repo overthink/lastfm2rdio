@@ -6,7 +6,7 @@
     [clj-http.client :as http]
     [clj-http.conn-mgr :as cm]))
 
-(defrecord LastfmClient [api-key conn-mgr]
+(defrecord LastfmClient [api-key conn-mgr req-count]
   component/Lifecycle
 
   (start [this]
@@ -22,10 +22,12 @@
 
 (defn client
   "Return a new lastfm client that can be used to make requests to their API.
-  Be sure to call shutdown when done."
+  Lazy results might need the client \"later\" so be careful with scoping, or
+  be sure to force results."
   [api-key]
   (map->LastfmClient
-    {:api-key api-key}))
+    {:api-key api-key
+     :req-count (atom 0)}))
 
 (defn- do-get
   [client opts]
@@ -45,7 +47,7 @@
     resp))
 
 (defn loved
-  "Return a seq of username's loved tracks."
+  "Return a lazy seq of username's loved tracks."
   ([client username]
    (loved client username 1 1000))
   ([client username page limit-per-page]
@@ -55,10 +57,10 @@
                                 :user username
                                 :page page
                                 :limit limit-per-page}})
-         _ (prn "got response...")
          tracks (get-in resp [:body "lovedtracks" "track"])
          info (get-in resp [:body "lovedtracks" "@attr"])
          total-pages (Integer/valueOf ^String (get info "totalPages"))]
+     (swap! (:req-count client) inc) ; count requests made; largely for testing
      (if (= page total-pages)
        tracks
        (lazy-cat tracks (loved client username (inc page) limit-per-page))))))

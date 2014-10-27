@@ -24,7 +24,9 @@
         lastfm (:lastfm system)]
     (try
       (let [tracks (lastfm/loved lastfm "overthink" 1 10)]
+        (is (= 1 @(:req-count lastfm)) "first page request is eager")
         (is (= 20 (count (take 20 tracks))) "paging works"))
+        (is (= 2 @(:req-count lastfm)) "further requests are lazy")
       (finally
         (component/stop system)))))
 
