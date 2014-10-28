@@ -1,5 +1,4 @@
 (ns lastfm2rdio.main
-  "We'll jam stuff into core until the proper ns organization reveals itself."
   (:require
     [com.stuartsierra.component :as component]
     [lastfm2rdio.lastfm :as lastfm]
@@ -33,20 +32,27 @@
     (str (.get (System/getenv) "HOME") "/.lastfm2rdio")))
 
 (defn system
-  [config]
-  (component/system-map
-    :rdio (rdio/client
-            (get-in config [:user-creds :rdio :oauth_token])
-            (get-in config [:user-creds :rdio :oauth_token_secret]))
-    :echonest (echonest/client
-                (get-in config [:app-creds :echonest :consumer-key])
-                (get-in config [:app-creds :echonest :shared-secret])
-                (get-in config [:app-creds :echonest :api-key]))
-    :lastfm (lastfm/client (get-in config [:app-creds :lastfm :api-key]))))
+  ([] (system (config)))
+  ([config]
+   (component/system-map
+     :rdio (let [cfg (get-in config [:user-creds :rdio])]
+             (rdio/client (:oauth_token cfg)
+                          (:oauth_token_secret cfg)))
+     :echonest (let [cfg (get-in config [:app-creds :echonest])]
+                 (echonest/client (:consumer-key cfg)
+                                  (:shared-secret cfg)
+                                  (:api-key cfg)))
+     :lastfm (lastfm/client (get-in config [:app-creds :lastfm :api-key]))
+     :app (component/using
+            {}
+            [:lastfm :echonest :rdio]))))
 
 (defn -main [& args]
-  :ok
-  )
+  (let [system (component/start (system))]
+    (try
+      (clojure.pprint/pprint (:app system))
+      (finally
+        (component/stop system)))))
 
 ; Learning more:
 ; - need Echo Nest acct

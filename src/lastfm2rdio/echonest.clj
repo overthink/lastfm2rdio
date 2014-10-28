@@ -31,7 +31,7 @@
         code (get status "code")
         message (get status "message")]
     ;; And more not-using-http-status shenanigans
-    (when-not (zero? code)
+    (when (and (:throw-exceptions req) (not (zero? code)))
       (throw (Exception. (format "echonest error code %s: %s" code message))))
     resp))
 
@@ -55,6 +55,25 @@
   (do-post client
            "tasteprofile/delete"
            {:form-params {:id id}}))
+
+(defn taste-profile
+  "Get basic info about a taste-profile.  Returns nil if no taste profile found
+  matching name."
+  [client tpname]
+  (let [resp (do-get client
+                     "tasteprofile/profile"
+                     {:query-params {:name tpname}
+                      :throw-exceptions false})]
+    (when (= 200 (:status resp))
+      (get-in resp [:body "response" "catalog"]))))
+
+(defn list-taste-profiles
+  "List all profiles associated with current api key."
+  [client]
+  (let [resp (do-get client
+                     "tasteprofile/list"
+                     {})]
+    (get-in resp [:body "response" "catalogs"])))
 
 (defn song-profile
   "Get info about a song.
