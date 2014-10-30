@@ -1,6 +1,7 @@
 (ns lastfm2rdio.echonest
   "Code for working with The Echo Nest's API."
   (:require
+    [clojure.walk :refer [keywordize-keys]]
     [lastfm2rdio.util :as util]
     [com.stuartsierra.component :as component]
     [clj-http.client :as http]
@@ -44,17 +45,28 @@
   (do-request client path (merge req {:method :post})))
 
 (defn create-taste-profile
-  "Create a taste profile with name tpname."
+  "Create a taste profile with name tpname. Returns the created tp.  Throws if
+  tp already exists."
   [client tpname]
-  (do-post client
-           "tasteprofile/create"
-           {:form-params {:name tpname}}))
+  (let [resp (do-post client
+                      "tasteprofile/create"
+                      {:form-params {:name tpname
+                                     :type "song"}})
+        data (get-in resp [:body "response"])
+        status (get data "status")]
+    (when-not (zero? (get status "code"))
+      (throw (Exception. (str "Echonest API error: " (get status "message")))))
+    (keywordize-keys (dissoc data "status"))))
 
-(defn delete-taste-profile
+(defn delete-taste-profile!
+  "Delete taste profile with given id.  Returns nil."
   [client id]
+  (assert (not (nil? id)))
   (do-post client
            "tasteprofile/delete"
-           {:form-params {:id id}}))
+           {:form-params {:id id}
+            :throw-exceptions? false})
+  nil)
 
 (defn taste-profile
   "Get basic info about a taste-profile.  Returns nil if no taste profile found

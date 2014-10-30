@@ -5,12 +5,12 @@
     [lastfm2rdio.echonest :as en]
     [lastfm2rdio.rdio :as rdio]))
 
-(defn ensure-empty-tp
-  "Ensure we have an empty taste profile named tpname. i.e. drop existing tp,
-  create a new one. Returns the new, empty taste profile."
+(defn empty-tp
+  "Return a new empty taste profile named tpname.  If an existing tp exists
+  wiht that name, it's deleted."
   [echonest tpname]
   (when-let [tp (en/taste-profile echonest tpname)]
-    (en/delete-taste-profile echonest (get tp "id")))
+    (en/delete-taste-profile! echonest (:id tp)))
   (en/create-taste-profile echonest tpname))
 
 (defn sync
@@ -25,7 +25,8 @@
   ; wait for ticket to be done
   ; delete any existing rdio playlist
   ; create new rdio playlist
-  (let [{:keys [lastfm echonest rdio]} app]
-    (ensure-empty-tp echonest lastfm-user)))
+  (let [{:keys [lastfm echonest rdio]} app
+        tp (empty-tp echonest lastfm-user)]
+    ))
 
 
