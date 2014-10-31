@@ -27,6 +27,7 @@
                   :url (str "http://developer.echonest.com/api/v4/" path)
                   :query-params {:api_key (:api-key client)}}
                  req)
+        _ (clojure.pprint/pprint req')
         resp (http/request req')
         status (get-in resp [:body "response" "status"])
         code (get status "code")
@@ -67,6 +68,23 @@
            {:form-params {:id id}
             :throw-exceptions? false})
   nil)
+
+(defn update-taste-profile!
+  "Update tasteprofile identified by id with data. data is a vector of items
+  described here:
+  http://developer.echonest.com/docs/v4/tasteprofile.html#update"
+  [client id data]
+  (assert (not (nil? id)))
+  (assert (seq data))
+  (let [resp (do-post
+               client
+               "tasteprofile/update"
+               {:form-params {:id id
+                              :data_type "json"
+                              :format "json"
+                              :data data}
+                :throw-exceptions? false})]
+    resp))
 
 (defn taste-profile
   "Get basic info about a taste-profile.  Returns nil if no taste profile found

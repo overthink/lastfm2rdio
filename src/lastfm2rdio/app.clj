@@ -3,7 +3,9 @@
   (:require
     [lastfm2rdio.lastfm :as lastfm]
     [lastfm2rdio.echonest :as en]
-    [lastfm2rdio.rdio :as rdio]))
+    [lastfm2rdio.rdio :as rdio])
+  (:import
+    java.util.UUID))
 
 (defn empty-tp
   "Return a new empty taste profile named tpname.  If an existing tp exists
@@ -12,6 +14,15 @@
   (when-let [tp (en/taste-profile echonest tpname)]
     (en/delete-taste-profile! echonest (:id tp)))
   (en/create-taste-profile echonest tpname))
+
+(defn lastfm->en
+  "Transform data from lastfm into data that echcnest's taste profile update
+  api understands."
+  [lastfm-track]
+    {:action "update"
+     :item {:item_id (str (UUID/randomUUID))
+            :song_name (get lastfm-track "name")
+            :artist_name (get-in lastfm-track ["artist" "name"])}})
 
 (defn sync
   "Update 'lastfm favs' playlist at rdio for user lastfm-user. 'sync' is highly
@@ -26,7 +37,8 @@
   ; delete any existing rdio playlist
   ; create new rdio playlist
   (let [{:keys [lastfm echonest rdio]} app
-        tp (empty-tp echonest lastfm-user)]
+        tp (empty-tp echonest lastfm-user)
+        loved (lastfm/loved lastfm lastfm-user)]
     ))
 
 
