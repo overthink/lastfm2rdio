@@ -12,7 +12,7 @@
   wiht that name, it's deleted."
   [echonest tpname]
   (when-let [tp (en/taste-profile echonest tpname)]
-    (en/delete-taste-profile! echonest (:id tp)))
+    (en/delete-taste-profile! echonest (get tp "id")))
   (en/create-taste-profile echonest tpname))
 
 (defn lastfm->en
@@ -39,6 +39,11 @@
   (let [{:keys [lastfm echonest rdio]} app
         tp (empty-tp echonest lastfm-user)
         loved (lastfm/loved lastfm lastfm-user)]
+    (prn tp)
+    (en/update-taste-profile!
+      echonest
+      (get tp "id")
+      (map lastfm->en loved))
     ))
 
 

@@ -4,6 +4,7 @@
     [clojure.walk :refer [keywordize-keys]]
     [lastfm2rdio.util :as util]
     [com.stuartsierra.component :as component]
+    [cheshire.core :as json]
     [clj-http.client :as http]
     [clj-http.conn-mgr :as cm]))
 
@@ -27,7 +28,6 @@
                   :url (str "http://developer.echonest.com/api/v4/" path)
                   :query-params {:api_key (:api-key client)}}
                  req)
-        _ (clojure.pprint/pprint req')
         resp (http/request req')
         status (get-in resp [:body "response" "status"])
         code (get status "code")
@@ -82,9 +82,22 @@
                {:form-params {:id id
                               :data_type "json"
                               :format "json"
-                              :data data}
-                :throw-exceptions? false})]
-    resp))
+                              :data (json/generate-string data)}
+                :throw-exceptions? false})
+        ticket (get-in resp [:body "response" "ticket"])]
+    ticket))
+
+(defn update-status
+  "Check the status of a taste profile update.  See
+  http://developer.echonest.com/docs/v4/tasteprofile.html#status Returns a map
+  with various info. ticket_status will be \"complete\" when done.  Throws un
+  unknown ticket."
+  [client ticket]
+  (let [resp (do-get client
+                     "tasteprofile/status"
+                     {:query-params {:ticket ticket}})]
+    (get-in resp [:body "response"])))
+
 
 (defn taste-profile
   "Get basic info about a taste-profile.  Returns nil if no taste profile found

@@ -47,8 +47,8 @@
 
 (deftest list-taste-profiles
   (with-system system
-    (let [en (:echonest system)]
-      (is (empty? (en/list-taste-profiles en)))
+    (let [en (:echonest system)
+          n (count (en/list-taste-profiles en))]
       (with-new-tp en (rand-tpname) _
-        (is (= 1 (count (en/list-taste-profiles en))))))))
+        (is (= (inc n) (count (en/list-taste-profiles en))))))))
 
