@@ -24,18 +24,21 @@
   request requires.  Returns response."
   [client path req]
   (let [req' (util/deep-merge
-                 {:as :json-string-keys
-                  :url (str "http://developer.echonest.com/api/v4/" path)
-                  :query-params {:api_key (:api-key client)}}
-                 req)
+               {:as :json-string-keys
+                :throw-exceptions? false
+                :url (str "http://developer.echonest.com/api/v4/" path)
+                :query-params {:api_key (:api-key client)}}
+               req)
         resp (http/request req')
         status (get-in resp [:body "response" "status"])
         code (get status "code")
         message (get status "message")]
-    ;; And more not-using-http-status shenanigans
-    (when (and (:throw-exceptions req) (not (zero? code)))
-      (throw (Exception. (format "echonest error code %s: %s" code message))))
-    resp))
+    (if (= 429 (:status resp))
+      (do
+        (println "Rate limited. Retryin 30 s ...")
+        (Thread/sleep 30000)
+        (recur client path req))
+      resp)))
 
 (defn- do-get
   [client path req]
@@ -65,9 +68,17 @@
   (assert (not (nil? id)))
   (do-post client
            "tasteprofile/delete"
-           {:form-params {:id id}
-            :throw-exceptions? false})
+           {:form-params {:id id}})
   nil)
+
+(defn delete-test-taste-profiles!
+  "Clean up crap I keep creating during test."
+  [client]
+  (let [victims (->> (list-taste-profiles client)
+                     (filter #(re-find #"^test-taste-profile-" (:name %))))]
+    (doseq [tp victims]
+      (println (format "Deleting taste profile %s (%s)" (:name tp) (:id tp)))
+      (delete-taste-profile! client (:id tp)))))
 
 (defn update-taste-profile!
   "Update tasteprofile identified by id with data. data is a vector of items
@@ -82,12 +93,11 @@
                {:form-params {:id id
                               :data_type "json"
                               :format "json"
-                              :data (json/generate-string data)}
-                :throw-exceptions? false})
+                              :data (json/generate-string data)}})
         ticket (get-in resp [:body "response" "ticket"])]
-    ticket))
+    (keywordize-keys ticket)))
 
-(defn update-status
+(defn taste-profile-status
   "Check the status of a taste profile update.  See
   http://developer.echonest.com/docs/v4/tasteprofile.html#status Returns a map
   with various info. ticket_status will be \"complete\" when done.  Throws un
@@ -96,7 +106,8 @@
   (let [resp (do-get client
                      "tasteprofile/status"
                      {:query-params {:ticket ticket}})]
-    (get-in resp [:body "response"])))
+    (keywordize-keys
+      (get-in resp [:body "response"]))))
 
 
 (defn taste-profile
@@ -105,10 +116,10 @@
   [client tpname]
   (let [resp (do-get client
                      "tasteprofile/profile"
-                     {:query-params {:name tpname}
-                      :throw-exceptions false})]
+                     {:query-params {:name tpname}})]
     (when (= 200 (:status resp))
-      (get-in resp [:body "response" "catalog"]))))
+      (keywordize-keys
+        (get-in resp [:body "response" "catalog"])))))
 
 (defn list-taste-profiles
   "List all profiles associated with current api key."
@@ -116,17 +127,26 @@
   (let [resp (do-get client
                      "tasteprofile/list"
                      {})]
-    (get-in resp [:body "response" "catalogs"])))
+    (keywordize-keys
+      (get-in resp [:body "response" "catalogs"]))))
 
-(defn song-profile
-  "Get info about a song.
-  http://developer.echonest.com/docs/v4/song.html#profile
-  e.g. id: \"musicbrainz:song:c56e730b-8e7d-44ee-9bdc-2c7e9d2bb879\"
-  "
-  [client song-id]
-  (let [resp (do-get client
-                     "song/profile"
-                     {:query-params {:id song-id}})]
-    (get-in resp [:body "response" "songs"])))
-
+(defn wait-for-update!
+  "Block until Echonest reports that ticket is fully processed.  Returns the
+  resulting update status. ticket is the value of the ticket key in the
+  update-taste-profile! response."
+  ([client ticket]
+   (wait-for-update! client ticket 1 2))
+  ([client ticket call-num wait-sec]
+   (assert (string? ticket))
+   (let [result (taste-profile-status client ticket)]
+     (prn result)
+     (cond
+       (= "complete" (:ticket_status result))
+       result
+       (< 5 call-num)
+       (throw (Exception. (str "Too long waiting for ticket completion: " result)))
+       :else
+       (do
+         (Thread/sleep (* 1000 wait-sec))
+         (recur client ticket (inc call-num) (* 2 wait-sec)))))))
 

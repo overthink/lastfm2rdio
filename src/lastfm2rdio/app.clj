@@ -12,7 +12,7 @@
   wiht that name, it's deleted."
   [echonest tpname]
   (when-let [tp (en/taste-profile echonest tpname)]
-    (en/delete-taste-profile! echonest (get tp "id")))
+    (en/delete-taste-profile! echonest (:id tp)))
   (en/create-taste-profile echonest tpname))
 
 (defn lastfm->en
@@ -20,7 +20,10 @@
   api understands."
   [lastfm-track]
     {:action "update"
-     :item {:item_id (str (UUID/randomUUID))
+     :item {:item_id (str (get lastfm-track "name")
+                          (get-in lastfm-track ["artist" "name"])
+                          (rand-int 1e7))
+                          ;(str (UUID/randomUUID))
             :song_name (get lastfm-track "name")
             :artist_name (get-in lastfm-track ["artist" "name"])}})
 
@@ -38,12 +41,12 @@
   ; create new rdio playlist
   (let [{:keys [lastfm echonest rdio]} app
         tp (empty-tp echonest lastfm-user)
-        loved (lastfm/loved lastfm lastfm-user)]
-    (prn tp)
-    (en/update-taste-profile!
-      echonest
-      (get tp "id")
-      (map lastfm->en loved))
+        loved (lastfm/loved lastfm lastfm-user)
+        ticket (en/update-taste-profile!
+                 echonest
+                 (:id tp)
+                 (map lastfm->en loved))]
+    (en/wait-for-update! echonest ticket)
     ))
 
 
