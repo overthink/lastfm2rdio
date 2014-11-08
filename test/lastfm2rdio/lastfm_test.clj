@@ -10,7 +10,7 @@
   (with-system system
     (let [lastfm (:lastfm system)
           tracks (lastfm/loved lastfm "overthink" 1 10)]
-      (is (= 1 @(:req-count lastfm)) "first page request is eager")
+      (is (= 0 @(:req-count lastfm)) "we're lazy")
       (is (= 20 (count (take 20 tracks))) "paging works")
-      (is (= 2 @(:req-count lastfm)) "further requests are lazy"))))
+      (is (= 2 @(:req-count lastfm)) "further requests are also lazy"))))
 

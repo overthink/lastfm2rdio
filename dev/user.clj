@@ -2,6 +2,7 @@
   (:require
     [clojure.repl :refer :all]
     [clojure.pprint :refer [pprint pp]]
+    [clojure.test :refer [test-ns]]
     [com.stuartsierra.component :as component]
     [clojure.tools.namespace.repl :refer (refresh)]
     [lastfm2rdio.main :as main]))
@@ -26,4 +27,12 @@
 (defn reset []
   (stop)
   (refresh :after 'user/go))
+
+(defn test-all
+  []
+  (refresh)
+  (->> (all-ns)
+       (filter #(re-find #"^lastfm2rdio.*-test$" (name (ns-name %))))
+       (map test-ns)
+       (apply merge-with +)))
 

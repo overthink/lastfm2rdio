@@ -20,10 +20,10 @@
   api understands."
   [lastfm-track]
     {:action "update"
-     :item {:item_id (str (get lastfm-track "name")
-                          (get-in lastfm-track ["artist" "name"])
+     :item {:item_id (str (get-in lastfm-track ["artist" "name"]) " - "
+                          (get lastfm-track "name") " - "
                           (rand-int 1e7))
-                          ;(str (UUID/randomUUID))
+            ;; above id just needs to be unique, but it's helpful if it's readable too
             :song_name (get lastfm-track "name")
             :artist_name (get-in lastfm-track ["artist" "name"])}})
 
@@ -37,6 +37,7 @@
   ; create new en tp
   ; update tp with all the favs
   ; wait for ticket to be done
+  ; get rdio IDs out of tp
   ; delete any existing rdio playlist
   ; create new rdio playlist
   (let [{:keys [lastfm echonest rdio]} app
@@ -45,8 +46,15 @@
         ticket (en/update-taste-profile!
                  echonest
                  (:id tp)
-                 (map lastfm->en loved))]
-    (en/wait-for-update! echonest ticket)
+                 (map lastfm->en loved))
+        _ (en/wait-for-update! echonest ticket)
+        tracks (en/rdio-tracks echonest (:id tp))
+        rdio-ids (->> tracks
+                      (map #(first (:tracks %)))
+                      (remove #(nil? %))
+                      (map :foreign_id))]
+    (prn rdio-ids)
+    (prn (count rdio-ids))
     ))
 
 

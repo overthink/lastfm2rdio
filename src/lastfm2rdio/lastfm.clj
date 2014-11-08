@@ -51,17 +51,18 @@
   ([client username]
    (loved client username 1 1000))
   ([client username page limit-per-page]
-   (let [resp (do-get
-                client
-                {:query-params {:method "user.getlovedtracks"
-                                :user username
-                                :page page
-                                :limit limit-per-page}})
-         tracks (get-in resp [:body "lovedtracks" "track"])
-         info (get-in resp [:body "lovedtracks" "@attr"])
-         total-pages (Integer/valueOf ^String (get info "totalPages"))]
-     (swap! (:req-count client) inc) ; count requests made; largely for testing
-     (if (= page total-pages)
-       tracks
-       (lazy-cat tracks (loved client username (inc page) limit-per-page))))))
+   (lazy-seq
+     (let [resp (do-get
+                  client
+                  {:query-params {:method "user.getlovedtracks"
+                                  :user username
+                                  :page page
+                                  :limit limit-per-page}})
+           tracks (get-in resp [:body "lovedtracks" "track"])
+           info (get-in resp [:body "lovedtracks" "@attr"])
+           total-pages (Integer/valueOf ^String (get info "totalPages"))]
+       (swap! (:req-count client) inc) ; count requests made; largely for testing
+       (if (= page total-pages)
+         tracks
+         (concat tracks (loved client username (inc page) limit-per-page)))))))
 

@@ -71,15 +71,6 @@
            {:form-params {:id id}})
   nil)
 
-(defn delete-test-taste-profiles!
-  "Clean up crap I keep creating during test."
-  [client]
-  (let [victims (->> (list-taste-profiles client)
-                     (filter #(re-find #"^test-taste-profile-" (:name %))))]
-    (doseq [tp victims]
-      (println (format "Deleting taste profile %s (%s)" (:name tp) (:id tp)))
-      (delete-taste-profile! client (:id tp)))))
-
 (defn update-taste-profile!
   "Update tasteprofile identified by id with data. data is a vector of items
   described here:
@@ -121,6 +112,29 @@
       (keywordize-keys
         (get-in resp [:body "response" "catalog"])))))
 
+(defn rdio-tracks
+  "Get Rdio Canada tracks for all the songs in the taste profile with id tp-id.
+  Returns a lazy seq of maps.  The interesting key is :tracks."
+  ([client tp-id]
+   (rdio-tracks client tp-id 0))
+  ([client tp-id start]
+   (lazy-seq
+     (let [batch-size 1000
+           resp (do-get client
+                        "tasteprofile/read"
+                        {:query-params {:id tp-id
+                                        :bucket ["tracks" "id:rdio-CA"]
+                                        :start start
+                                        :results batch-size}})
+           results (when (= 200 (:status resp))
+                     (keywordize-keys
+                       (get-in resp [:body "response" "catalog" "items"])))]
+       (prn "count" (count results))
+       (if (= (count results) batch-size)
+         ;; Got exactly as many as we asked for, might be more
+         (concat results (rdio-tracks client tp-id (+ start batch-size)))
+         results)))))
+
 (defn list-taste-profiles
   "List all profiles associated with current api key."
   [client]
@@ -129,6 +143,15 @@
                      {})]
     (keywordize-keys
       (get-in resp [:body "response" "catalogs"]))))
+
+(defn delete-test-taste-profiles!
+  "Clean up crap I keep creating during test."
+  [client]
+  (let [victims (->> (list-taste-profiles client)
+                     (filter #(re-find #"^test-taste-profile-" (:name %))))]
+    (doseq [tp victims]
+      (println (format "Deleting taste profile %s (%s)" (:name tp) (:id tp)))
+      (delete-taste-profile! client (:id tp)))))
 
 (defn wait-for-update!
   "Block until Echonest reports that ticket is fully processed.  Returns the
@@ -139,7 +162,6 @@
   ([client ticket call-num wait-sec]
    (assert (string? ticket))
    (let [result (taste-profile-status client ticket)]
-     (prn result)
      (cond
        (= "complete" (:ticket_status result))
        result
