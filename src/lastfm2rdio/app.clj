@@ -1,6 +1,9 @@
 (ns lastfm2rdio.app
+  "The actual app logic.  Uses lastfm and echonest to create a playlist of
+  favourites at rdio."
   (:refer-clojure :exclude [sync])
   (:require
+    [clojure.string :as s]
     [lastfm2rdio.lastfm :as lastfm]
     [lastfm2rdio.echonest :as en]
     [lastfm2rdio.rdio :as rdio])
@@ -27,19 +30,23 @@
             :song_name (get lastfm-track "name")
             :artist_name (get-in lastfm-track ["artist" "name"])}})
 
+(defn empty-playlist
+  "Ensure there is an empty rdio playstlist ready to accept our lastfm favs.
+  Any existing playlist with this ame name is blown away.  Returns the rdio playlist object."
+  [rdio playlist-name]
+  (let [playlists (rdio/owned-playlists rdio)
+        existing (first (filter #(= playlist-name (:name %)) playlists))]
+    (when existing
+      ;; TODO: don't delete old playlist, just empty it -- easier to share the
+      ;; playlist if it doesn't disappear all the time.
+      (rdio/delete-playlist rdio (:key existing)))
+    (rdio/create-playlist rdio playlist-name "lastfm2rdio - Favourites from last.fm")))
+
 (defn sync
   "Update 'lastfm favs' playlist at rdio for user lastfm-user. 'sync' is highly
   misleading since what we actually do is blow away any existing state and
   recreate it from scratch."
   [app lastfm-user]
-  ; fetch all the user's favs
-  ; delete any existing en tp
-  ; create new en tp
-  ; update tp with all the favs
-  ; wait for ticket to be done
-  ; get rdio IDs out of tp
-  ; delete any existing rdio playlist
-  ; create new rdio playlist
   (let [{:keys [lastfm echonest rdio]} app
         tp (empty-tp echonest lastfm-user)
         loved (lastfm/loved lastfm lastfm-user)
@@ -52,9 +59,8 @@
         rdio-ids (->> tracks
                       (map #(first (:tracks %)))
                       (remove #(nil? %))
-                      (map :foreign_id))]
-    (prn rdio-ids)
-    (prn (count rdio-ids))
-    ))
-
+                      (map :foreign_id)
+                      (map #(last (s/split % #":")))) ; rdio-CA:track:t123 -> t123
+        pl (empty-playlist rdio "last.fm favs")]
+    (rdio/add-to-playlist rdio (:key pl) rdio-ids)))
 

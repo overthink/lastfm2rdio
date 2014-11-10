@@ -3,15 +3,11 @@
   (:require
     [clojure.walk :refer [keywordize-keys]]
     [lastfm2rdio.util :as util]
-    [com.stuartsierra.component :as component]
     [cheshire.core :as json]
     [clj-http.client :as http]
     [clj-http.conn-mgr :as cm]))
 
-(defrecord EchoNest [consumer-key secret-key api-key]
-  component/Lifecycle
-  (start [this] this)
-  (stop [this] this))
+(defrecord EchoNest [consumer-key secret-key api-key])
 
 (defn client [consumer-key secret-key api-key]
   (map->EchoNest

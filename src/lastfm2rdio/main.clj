@@ -1,6 +1,8 @@
 (ns lastfm2rdio.main
+  "Entry point for app.  Sets up system, calls main app, little else."
   (:require
     [com.stuartsierra.component :as component]
+    [lastfm2rdio.app :as app]
     [lastfm2rdio.lastfm :as lastfm]
     [lastfm2rdio.echonest :as echonest]
     [lastfm2rdio.rdio :as rdio]))
@@ -35,9 +37,11 @@
   ([] (system (config)))
   ([config]
    (component/system-map
-     :rdio (let [cfg (get-in config [:user-creds :rdio])]
-             (rdio/client (:oauth_token cfg)
-                          (:oauth_token_secret cfg)))
+     :rdio (let [cfg (get-in config [:app-creds :rdio])]
+             (rdio/client (:consumer-key cfg)
+                          (:shared-secret cfg)
+                          (get-in config [:user-creds :rdio :oauth_token])
+                          (get-in config [:user-creds :rdio :oauth_token_secret])))
      :echonest (let [cfg (get-in config [:app-creds :echonest])]
                  (echonest/client (:consumer-key cfg)
                                   (:shared-secret cfg)
@@ -50,13 +54,8 @@
 (defn -main [& args]
   (let [system (component/start (system))]
     (try
-      (clojure.pprint/pprint (:app system))
+      (let [lastfm-user (first args)]
+        (app/sync (:app system) lastfm-user))
       (finally
         (component/stop system)))))
-
-; Learning more:
-; - need Echo Nest acct
-; - create taste profile for user at EN
-; - from taste profile can get rdio track IDs
-; - use rdio API to create playlist with appropriate IDs
 
