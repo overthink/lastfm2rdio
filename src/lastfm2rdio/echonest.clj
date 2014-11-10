@@ -125,7 +125,6 @@
            results (when (= 200 (:status resp))
                      (keywordize-keys
                        (get-in resp [:body "response" "catalog" "items"])))]
-       (prn "count" (count results))
        (if (= (count results) batch-size)
          ;; Got exactly as many as we asked for, might be more
          (concat results (rdio-tracks client tp-id (+ start batch-size)))
