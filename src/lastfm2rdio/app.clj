@@ -1,14 +1,11 @@
 (ns lastfm2rdio.app
   "The actual app logic.  Uses lastfm and echonest to create a playlist of
   favourites at rdio."
-  (:refer-clojure :exclude [sync])
   (:require
     [clojure.string :as s]
     [lastfm2rdio.lastfm :as lastfm]
     [lastfm2rdio.echonest :as en]
-    [lastfm2rdio.rdio :as rdio])
-  (:import
-    java.util.UUID))
+    [lastfm2rdio.rdio :as rdio]))
 
 (defn empty-tp
   "Return a new empty taste profile named tpname.  If an existing tp exists
@@ -30,7 +27,7 @@
             :song_name (get lastfm-track "name")
             :artist_name (get-in lastfm-track ["artist" "name"])}})
 
-(defn empty-playlist
+(defn ensure-playlist
   "Ensure there is an empty rdio playstlist ready to accept our lastfm favs.
   Any existing playlist with this ame name is blown away.  Returns the rdio playlist object."
   [rdio playlist-name]
@@ -42,10 +39,8 @@
       (rdio/delete-playlist rdio (:key existing)))
     (rdio/create-playlist rdio playlist-name "lastfm2rdio - Favourites from last.fm")))
 
-(defn sync
-  "Update 'lastfm favs' playlist at rdio for user lastfm-user. 'sync' is highly
-  misleading since what we actually do is blow away any existing state and
-  recreate it from scratch."
+(defn update-playlist
+  "Update 'lastfm favs' playlist at rdio for user lastfm-user."
   [app lastfm-user]
   (let [{:keys [lastfm echonest rdio]} app
         tp (empty-tp echonest lastfm-user)
@@ -61,6 +56,6 @@
                       (remove #(nil? %))
                       (map :foreign_id)
                       (map #(last (s/split % #":")))) ; rdio-CA:track:t123 -> t123
-        pl (empty-playlist rdio "last.fm favs")]
+        pl (ensure-playlist rdio "last.fm favs")]
     (rdio/add-to-playlist rdio (:key pl) rdio-ids)))
 

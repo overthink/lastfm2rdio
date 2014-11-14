@@ -4,8 +4,7 @@
     [clojure.walk :refer [keywordize-keys]]
     [lastfm2rdio.util :as util]
     [cheshire.core :as json]
-    [clj-http.client :as http]
-    [clj-http.conn-mgr :as cm]))
+    [clj-http.client :as http])
 
 (defrecord EchoNest [consumer-key secret-key api-key])
 
@@ -31,7 +30,7 @@
         message (get status "message")]
     (if (= 429 (:status resp))
       (do
-        (println "Rate limited. Retryin 30 s ...")
+        (println "Rate limited. Retrying in 30 s ...")
         (Thread/sleep 30000)
         (recur client path req))
       resp)))

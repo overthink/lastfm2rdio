@@ -55,7 +55,7 @@
   (let [system (component/start (system))]
     (try
       (let [lastfm-user (first args)]
-        (app/sync (:app system) lastfm-user))
+        (app/update-playlist (:app system) lastfm-user))
       (finally
         (component/stop system)))))
 
