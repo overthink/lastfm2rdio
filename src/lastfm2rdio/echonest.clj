@@ -4,7 +4,7 @@
     [clojure.walk :refer [keywordize-keys]]
     [lastfm2rdio.util :as util]
     [cheshire.core :as json]
-    [clj-http.client :as http])
+    [clj-http.client :as http]))
 
 (defrecord EchoNest [consumer-key secret-key api-key])
 
