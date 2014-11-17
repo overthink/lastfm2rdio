@@ -17,15 +17,22 @@
 
 (defn lastfm->en
   "Transform data from lastfm into data that echcnest's taste profile update
-  api understands."
-  [lastfm-track]
+  api understands.  match-scheme determines which parts of the lastfm track we
+  send to Echo Nest.  Accepted values are:
+
+  :default - Just use artist and song name
+  :mb      - use Musicbrainz id (mbid)"
+  [match-scheme lastfm-track]
+  ;; item_id needs to be unique, but it helps debugging if it's meaningful
+  (let [item-id (str (get-in lastfm-track ["artist" "name"]) " - "
+                     (get lastfm-track "name") " - "
+                     (rand-int 1e7))]
     {:action "update"
-     :item {:item_id (str (get-in lastfm-track ["artist" "name"]) " - "
-                          (get lastfm-track "name") " - "
-                          (rand-int 1e7))
-            ;; above id just needs to be unique, but it's helpful if it's readable too
-            :song_name (get lastfm-track "name")
-            :artist_name (get-in lastfm-track ["artist" "name"])}})
+     :item (assoc (case match-scheme
+                    :default {:song_name (get lastfm-track "name")
+                              :artist_name (get-in lastfm-track ["artist" "name"])}
+                    :mb {:track_id (str "musicbrainz:track:" (get lastfm-track "mbid"))})
+                  :item_id item-id)}))
 
 (defn ensure-playlist
   "Ensure there is an empty rdio playstlist ready to accept our lastfm favs.
@@ -48,7 +55,7 @@
         ticket (en/update-taste-profile!
                  echonest
                  (:id tp)
-                 (map lastfm->en loved))
+                 (map (partial lastfm->en :default) loved))
         _ (en/wait-for-update! echonest ticket)
         tracks (en/rdio-tracks echonest (:id tp))
         rdio-ids (->> tracks

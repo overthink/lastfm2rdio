@@ -54,8 +54,9 @@
 (defn -main [& args]
   (let [system (component/start (system))]
     (try
-      (let [lastfm-user (first args)]
-        (app/update-playlist (:app system) lastfm-user))
+      (let [lastfm-user (first args)
+            result (app/update-playlist (:app system) lastfm-user)]
+        (println (format "Created playlist with %s items" (:length result))))
       (finally
         (component/stop system)))))
 

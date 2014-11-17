@@ -82,7 +82,6 @@
         resp (do-request client {:method "addToPlaylist"
                                  :playlist playlist-key
                                  :tracks csv})]
-    (clojure.pprint/pprint resp)
     (get-in resp [:body :result])))
 
 (defn authorize-rdio!
